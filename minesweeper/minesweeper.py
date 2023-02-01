@@ -70,6 +70,10 @@ class Minesweeper():
                 if (i, j) == cell:
                     continue
 
+                # Ignore diagonals
+                if ((i == (cell[0] - 1) and j == (cell[1] - 1)) or (i == (cell[0] - 1) and j == (cell[1] + 1)) or (i == (cell[0] + 1) and j == (cell[1] - 1)) or (i == (cell[0] + 1) and j == (cell[1] + 1))):
+                    continue
+
                 # Update count if cell in bounds and is mine
                 if 0 <= i < self.height and 0 <= j < self.width:
                     if self.board[i][j]:
@@ -105,30 +109,35 @@ class Sentence():
         """
         Returns the set of all cells in self.cells known to be mines.
         """
-        raise NotImplementedError
+        if (self.count == len(self.cells) and self.count != 0):
+            print("Mines found")
+            return self.cells
+        return set()
 
     def known_safes(self):
         """
         Returns the set of all cells in self.cells known to be safe.
         """
-
-        known_safe_cells = set()
-
-        raise NotImplementedError
+        if (self.count == 0):
+            return self.cells
+        return set()
 
     def mark_mine(self, cell):
         """
         Updates internal knowledge representation given the fact that
         a cell is known to be a mine.
         """
-        raise NotImplementedError
+        if (cell in self.cells):
+            self.cells.remove(cell)
+            self.count = self.count - 1
 
     def mark_safe(self, cell):
         """
         Updates internal knowledge representation given the fact that
         a cell is known to be safe.
         """
-        raise NotImplementedError
+        if (cell in self.cells):
+            self.cells.remove(cell)
 
 
 class MinesweeperAI():
@@ -185,7 +194,90 @@ class MinesweeperAI():
             5) add any new sentences to the AI's knowledge base
                if they can be inferred from existing knowledge
         """
-        raise NotImplementedError
+
+        print("------------------------")
+        print("_______Adding knowledge, cell: ", cell, " count: ", count)
+        print("Previous knowledge base: ", *self.knowledge)
+        print("Previous moves made: ", self.moves_made)
+        print("Till now safes: ", self.safes)
+
+        # marked as made if not made yet
+        self.moves_made.add(cell)
+        
+        # marked as safe
+        if (cell not in self.safes):
+            self.safes.add(cell)
+            for sentence in self.knowledge:
+                sentence.mark_safe(cell)
+
+        # creating new sentence
+        new_sentence_cells = set()
+
+        for i in range(0, self.height):
+            for j in range(0, self.width):
+                if ((i,j) == cell):
+                    continue
+                if ((i == cell[0]) and (j == (cell[1] - 1) or j == (cell[1] + 1)) and j < self.width and j >= 0):
+                    # checking if left or right side cell
+                    if ((i,j) in self.mines):
+                        count = count - 1
+                    elif ((i,j) not in self.safes):
+                        new_sentence_cells.add((i,j))
+                elif ((j == cell[1]) and (i == (cell[0] - 1) or i == (cell[0] + 1)) and i < self.height and i >= 0):
+                    # checking if up or down side cell
+                    if ((i,j) in self.mines):
+                        count = count - 1
+                    elif ((i,j) not in self.safes):
+                        new_sentence_cells.add((i,j))
+        
+        # print("New cells: ", *new_sentence_cells)
+        if (len(new_sentence_cells) != 0):
+            new_sentence = Sentence(new_sentence_cells, count)
+            self.knowledge.append(new_sentence)
+        
+        # print("Loop 2 done. New Sentence", new_sentence.__str__())
+
+        # adding new sentence to knowledge base
+        
+
+        print("New knowledge base: ", *self.knowledge)
+
+        if (len(new_sentence_cells) != 0):
+            # Constructing a new sentence after creating the existing one
+            for existing_sentence in self.knowledge:
+                if (existing_sentence.cells == new_sentence.cells):
+                    continue
+                if (new_sentence.cells.issubset(existing_sentence.cells)):
+                    new_temp_cells = existing_sentence.cells - new_sentence.cells
+                    new_temp_count = existing_sentence.count - new_sentence.count
+                    if (len(new_temp_cells) != 0):
+                        print("Debug: ", len(new_temp_cells))
+                        new_temp_sentence = Sentence(new_temp_cells, new_temp_count)
+                        print("Debug: ", len(new_temp_sentence.cells))
+                        self.knowledge.append(new_temp_sentence)
+                elif (existing_sentence.cells.issubset(new_sentence.cells)):
+                    new_temp_cells = new_sentence.cells - existing_sentence.cells
+                    new_temp_count = new_sentence.count - existing_sentence.count
+                    if (len(new_temp_cells) != 0):
+                        print("Debug: ", len(new_temp_cells))
+                        new_temp_sentence = Sentence(new_temp_cells, new_temp_count)
+                        print("Debug: ", len(new_temp_sentence.cells))
+                        self.knowledge.append(new_temp_sentence)
+            print("Knowledge base updated again")
+            print("New knowledge base: ", *self.knowledge)
+
+        # Infer
+        for sentence in self.knowledge:
+            if (sentence.count == 0):
+                for cell in sentence.cells:
+                    self.safes.add(cell)
+            elif (sentence.count == len(sentence.cells)):
+                for cell in sentence.cells:
+                    self.mines.add(cell)
+
+        print("Updated safes ", self.safes)
+        print("Updated mines ", self.mines)
+        print("--------------------")
 
     def make_safe_move(self):
         """
@@ -196,8 +288,18 @@ class MinesweeperAI():
         This function may use the knowledge in self.mines, self.safes
         and self.moves_made, but should not modify any of those values.
         """
-        raise NotImplementedError
+        print("------------------------")
+        print("Safe move function")
+        print("Safes known: ", len(self.safes), " -> ", self.safes)
+        print("Moves made: ", len(self.moves_made), " -> ", self.moves_made)
 
+        safe_cells = self.safes - self.moves_made
+        print("Safe move available: ", safe_cells)
+        if (safe_cells):
+            cell = random.sample(safe_cells, 1)
+            print("Safe cell found ", cell)
+            return cell[0]  
+        
     def make_random_move(self):
         """
         Returns a move to make on the Minesweeper board.
@@ -205,4 +307,19 @@ class MinesweeperAI():
             1) have not already been chosen, and
             2) are not known to be mines
         """
-        raise NotImplementedError
+        print("------------------------")
+        print("random move function")
+        temp_cells = list()
+        for i in range(0, self.height):
+            for j in range(0, self.width):
+                temp_cells.append((i,j))
+        
+        print("before shuffling ", temp_cells)
+        temp_cells = random.sample(temp_cells, len(temp_cells))
+        print("after shuffling ", temp_cells)
+        for cell in temp_cells:
+            if cell not in self.moves_made and cell not in self.mines:
+                print("Random move found ", cell)
+                return cell
+
+        return None
