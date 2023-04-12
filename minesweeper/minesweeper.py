@@ -238,8 +238,6 @@ class MinesweeperAI():
         # print("Loop 2 done. New Sentence", new_sentence.__str__())
 
         # adding new sentence to knowledge base
-        
-
         print("New knowledge base: ", *self.knowledge)
 
         if (len(new_sentence_cells) != 0):
